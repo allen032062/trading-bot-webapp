@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>資金分配滑桿</title>
+    <title>開倉位</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -121,7 +121,7 @@
 </head>
 <body>
     <div class="header">
-        <h2 id="title">選擇進場資金比例</h2>
+        <h2>📊 開倉位</h2>
         <div class="balance" id="balance">可用: $0 USDT</div>
     </div>
 
@@ -135,7 +135,7 @@
             <button data-val="100">100%</button>
         </div>
         <div class="preview">
-            <div class="label">使用金額</div>
+            <div class="label">使用金額（USDT）</div>
             <div class="amount" id="usdAmount">$0</div>
             <div class="btc" id="btcAmount">≈ 0 BTC</div>
         </div>
@@ -151,15 +151,10 @@
 
         // 從 URL 取得參數
         const params = new URLSearchParams(window.location.search);
-        const side = params.get('side') || 'long';
         const balance = parseFloat(params.get('balance')) || 1000;
         const price = parseFloat(params.get('price')) || 81000;
 
-        // 設定標題
-        document.getElementById('title').textContent = side === 'long' ? '🟢 選擇做多比例' : '🔴 選擇做空比例';
-        document.getElementById('balance').textContent = side === 'long' 
-            ? `可用: $${balance.toFixed(2)} USDT` 
-            : `可用: ${balance.toFixed(6)} BTC`;
+        document.getElementById('balance').textContent = `可用: $${balance.toFixed(2)} USDT`;
 
         const slider = document.getElementById('slider');
         const percentEl = document.getElementById('percent');
@@ -178,14 +173,8 @@
                 btn.classList.toggle('active', parseInt(btn.dataset.val) === parseInt(val));
             });
 
-            let usd, btc;
-            if (side === 'long') {
-                usd = balance * val / 100;
-                btc = usd / price;
-            } else {
-                btc = balance * val / 100;
-                usd = btc * price;
-            }
+            const usd = balance * val / 100;
+            const btc = usd / price;
 
             usdEl.textContent = `$${usd.toFixed(2)}`;
             btcEl.textContent = `≈ ${btc.toFixed(6)} BTC`;
@@ -210,24 +199,18 @@
         }, 1000);
 
         // Main Button
-        tg.MainButton.text = '確認進場';
+        tg.MainButton.text = '確認開倉';
         tg.MainButton.show();
 
         tg.onEvent('mainButtonClicked', () => {
             clearInterval(timer);
             const val = parseInt(slider.value);
-            let usd, btc;
-            if (side === 'long') {
-                usd = balance * val / 100;
-                btc = usd / price;
-            } else {
-                btc = balance * val / 100;
-                usd = btc * price;
-            }
+            const usd = balance * val / 100;
+            const btc = usd / price;
             
             const result = {
                 percent: val,
-                side: side,
+                side: 'long',
                 usd: usd,
                 btc: btc
             };

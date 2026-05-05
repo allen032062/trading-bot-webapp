@@ -149,11 +149,17 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // 從 URL 取得參數
-        const params = new URLSearchParams(window.location.search);
-        const balanceRaw = params.get('balance');
+        // 優先從 initDataUnsafe 取參數（Telegram WebApp 標準方式），沒有則用 URL params
+        const initData = tg.initDataUnsafe || {};
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // 取得 balance：initDataUnsafe > URL params > 預設 1000
+        const balanceRaw = initData.balance ?? urlParams.get('balance');
         const balance = balanceRaw !== null && balanceRaw !== '' ? parseFloat(balanceRaw) : 1000;
-        const price = parseFloat(params.get('price')) || 81000;
+
+        // 取得 price：initDataUnsafe > URL params > 預設 81000
+        const priceRaw = initData.price ?? urlParams.get('price');
+        const price = priceRaw !== null && priceRaw !== '' ? parseFloat(priceRaw) : 81000;
 
         document.getElementById('balance').textContent = `可用: $${balance.toFixed(2)} USDT`;
 

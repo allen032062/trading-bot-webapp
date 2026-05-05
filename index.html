@@ -6,57 +6,238 @@
     <title>資金分配滑桿</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             padding: 20px;
-            background-color: var(--tg-theme-bg-color);
-            color: var(--tg-theme-text-color);
-            text-align: center;
+            background-color: var(--tg-theme-bg-color, #1a1a2e);
+            color: var(--tg-theme-text-color, #fff);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
-        h2 { margin-bottom: 10px; }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h2 {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+        .header .balance {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #888);
+        }
+        .slider-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .percent-display {
+            text-align: center;
+            font-size: 64px;
+            font-weight: bold;
+            color: var(--tg-theme-button-color, #4ade80);
+            margin-bottom: 20px;
+        }
+        .percent-display span {
+            font-size: 32px;
+            color: var(--tg-theme-hint-color, #888);
+        }
         input[type="range"] {
             width: 100%;
+            height: 12px;
+            border-radius: 6px;
+            background: var(--tg-theme-secondary-bg-color, #0f3460);
+            outline: none;
+            -webkit-appearance: none;
             margin: 20px 0;
         }
-        #valDisplay {
-            font-size: 32px;
-            font-weight: bold;
-            color: var(--tg-theme-button-color, #0088cc);
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--tg-theme-button-color, #4ade80);
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(74, 222, 128, 0.4);
         }
-        .info {
+        .quick-btns {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .quick-btns button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: var(--tg-theme-secondary-bg-color, #0f3460);
+            color: var(--tg-theme-text-color, #fff);
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .quick-btns button.active {
+            background: var(--tg-theme-button-color, #4ade80);
+            color: #000;
+        }
+        .preview {
+            background: var(--tg-theme-secondary-bg-color, #0f3460);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .preview .label {
             font-size: 14px;
-            color: var(--tg-theme-hint-color, #999);
-            margin-top: 10px;
+            color: var(--tg-theme-hint-color, #888);
+            margin-bottom: 8px;
+        }
+        .preview .amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--tg-theme-text-color, #fff);
+        }
+        .preview .btc {
+            font-size: 16px;
+            color: var(--tg-theme-hint-color, #888);
+            margin-top: 4px;
+        }
+        .timer-bar {
+            height: 4px;
+            background: var(--tg-theme-secondary-bg-color, #0f3460);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: auto;
+        }
+        .timer-bar .progress {
+            height: 100%;
+            background: var(--tg-theme-button-color, #4ade80);
+            width: 100%;
+            transition: width 1s linear;
         }
     </style>
 </head>
 <body>
-    <h2>選擇進場資金比例</h2>
-    <div id="valDisplay">50%</div>
-    <input type="range" id="percentSlider" min="1" max="100" value="50">
-    <div class="info">拖動滑桿選擇比例，按確認後送出</div>
+    <div class="header">
+        <h2 id="title">選擇進場資金比例</h2>
+        <div class="balance" id="balance">可用: $0 USDT</div>
+    </div>
+
+    <div class="slider-container">
+        <div class="percent-display"><span id="percent">50</span><span>%</span></div>
+        <input type="range" id="slider" min="1" max="100" value="50">
+        <div class="quick-btns">
+            <button data-val="10">10%</button>
+            <button data-val="25">25%</button>
+            <button data-val="50">50%</button>
+            <button data-val="100">100%</button>
+        </div>
+        <div class="preview">
+            <div class="label">使用金額</div>
+            <div class="amount" id="usdAmount">$0</div>
+            <div class="btc" id="btcAmount">≈ 0 BTC</div>
+        </div>
+    </div>
+
+    <div class="timer-bar">
+        <div class="progress" id="timerProgress"></div>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        const slider = document.getElementById("percentSlider");
-        const display = document.getElementById("valDisplay");
+        // 從 URL 取得參數
+        const params = new URLSearchParams(window.location.search);
+        const side = params.get('side') || 'long';
+        const balance = parseFloat(params.get('balance')) || 1000;
+        const price = parseFloat(params.get('price')) || 81000;
 
-        slider.oninput = function() {
-            display.innerHTML = this.value + "%";
+        // 設定標題
+        document.getElementById('title').textContent = side === 'long' ? '🟢 選擇做多比例' : '🔴 選擇做空比例';
+        document.getElementById('balance').textContent = side === 'long' 
+            ? `可用: $${balance.toFixed(2)} USDT` 
+            : `可用: ${balance.toFixed(6)} BTC`;
+
+        const slider = document.getElementById('slider');
+        const percentEl = document.getElementById('percent');
+        const usdEl = document.getElementById('usdAmount');
+        const btcEl = document.getElementById('btcAmount');
+        const quickBtns = document.querySelectorAll('.quick-btns button');
+        const timerProgress = document.getElementById('timerProgress');
+
+        let remainingTime = 15;
+
+        function updateDisplay(val) {
+            slider.value = val;
+            percentEl.textContent = val;
+
+            quickBtns.forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.val) === parseInt(val));
+            });
+
+            let usd, btc;
+            if (side === 'long') {
+                usd = balance * val / 100;
+                btc = usd / price;
+            } else {
+                btc = balance * val / 100;
+                usd = btc * price;
+            }
+
+            usdEl.textContent = `$${usd.toFixed(2)}`;
+            btcEl.textContent = `≈ ${btc.toFixed(6)} BTC`;
         }
 
-        tg.MainButton.text = "確認送出單子";
+        slider.addEventListener('input', e => updateDisplay(e.target.value));
+
+        quickBtns.forEach(btn => {
+            btn.addEventListener('click', () => updateDisplay(btn.dataset.val));
+        });
+
+        // 15秒倒計時
+        const timer = setInterval(() => {
+            remainingTime--;
+            timerProgress.style.width = (remainingTime / 15 * 100) + '%';
+            
+            if (remainingTime <= 0) {
+                clearInterval(timer);
+                tg.sendData('timeout');
+                tg.close();
+            }
+        }, 1000);
+
+        // Main Button
+        tg.MainButton.text = '確認進場';
         tg.MainButton.show();
 
-        tg.onEvent('mainButtonClicked', function() {
-            const finalPercent = slider.value;
-            tg.sendData(finalPercent);
+        tg.onEvent('mainButtonClicked', () => {
+            clearInterval(timer);
+            const val = parseInt(slider.value);
+            let usd, btc;
+            if (side === 'long') {
+                usd = balance * val / 100;
+                btc = usd / price;
+            } else {
+                btc = balance * val / 100;
+                usd = btc * price;
+            }
+            
+            const result = {
+                percent: val,
+                side: side,
+                usd: usd,
+                btc: btc
+            };
+            
+            tg.sendData(JSON.stringify(result));
             tg.close();
         });
 
         tg.ready();
+        updateDisplay(50);
     </script>
 </body>
 </html>

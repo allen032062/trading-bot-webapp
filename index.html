@@ -151,7 +151,8 @@
 
         // 從 URL 取得參數
         const params = new URLSearchParams(window.location.search);
-        const balance = parseFloat(params.get('balance')) || 1000;
+        const balanceRaw = params.get('balance');
+        const balance = balanceRaw !== null && balanceRaw !== '' ? parseFloat(balanceRaw) : 1000;
         const price = parseFloat(params.get('price')) || 81000;
 
         document.getElementById('balance').textContent = `可用: $${balance.toFixed(2)} USDT`;

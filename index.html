@@ -154,16 +154,15 @@
         const rawSearch = window.location.search;
         document.getElementById("debugUrl").innerText = "收到網址參數: " + (rawSearch || "無參數");
 
-        // 優先從 initDataUnsafe 取參數（Telegram WebApp 標準方式），沒有則用 URL params
-        const initData = tg.initDataUnsafe || {};
+        // 直接從 URL params 取（Bot 會把餘額放在 URL 參數裏）
         const urlParams = new URLSearchParams(rawSearch);
 
-        // 取得 balance：initDataUnsafe > URL params > 預設 1000
-        const balanceRaw = initData.balance ?? urlParams.get('balance');
+        // 取得 balance
+        const balanceRaw = urlParams.get('balance');
         const balance = balanceRaw !== null && balanceRaw !== '' ? parseFloat(balanceRaw) : 1000;
 
-        // 取得 price：initDataUnsafe > URL params > 預設 81000
-        const priceRaw = initData.price ?? urlParams.get('price');
+        // 取得 price
+        const priceRaw = urlParams.get('price');
         const price = priceRaw !== null && priceRaw !== '' ? parseFloat(priceRaw) : 81000;
 
         document.getElementById('balance').textContent = `可用: $${balance.toFixed(2)} USDT`;

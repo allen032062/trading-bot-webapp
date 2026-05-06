@@ -123,6 +123,7 @@
     <div class="header">
         <h2>📊 開倉位</h2>
         <div class="balance" id="balance">可用: $0 USDT</div>
+        <div id="debugUrl" style="color: red; font-size: 12px; word-break: break-all;"></div>
     </div>
 
     <div class="slider-container">
@@ -149,9 +150,13 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
+        // Debug：顯示收到的 URL 參數
+        const rawSearch = window.location.search;
+        document.getElementById("debugUrl").innerText = "收到網址參數: " + (rawSearch || "無參數");
+
         // 優先從 initDataUnsafe 取參數（Telegram WebApp 標準方式），沒有則用 URL params
         const initData = tg.initDataUnsafe || {};
-        const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(rawSearch);
 
         // 取得 balance：initDataUnsafe > URL params > 預設 1000
         const balanceRaw = initData.balance ?? urlParams.get('balance');

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>設定</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background-color: var(--tg-theme-bg-color, #1a1a2e);
+            color: var(--tg-theme-text-color, #fff);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .header h2 {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+        .current-values {
+            background: var(--tg-theme-secondary-bg-color, #0f3460);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        .current-values .label {
+            color: var(--tg-theme-hint-color, #888);
+            margin-bottom: 4px;
+        }
+        .current-values .value {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--tg-theme-text-color, #fff);
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #888);
+            margin-bottom: 8px;
+        }
+        .auto-open-display {
+            text-align: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: var(--tg-theme-button-color, #4ade80);
+            margin-bottom: 16px;
+        }
+        .auto-open-display span {
+            font-size: 24px;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 12px;
+            border-radius: 6px;
+            background: var(--tg-theme-secondary-bg-color, #0f3460);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--tg-theme-button-color, #4ade80);
+            cursor: pointer;
+        }
+        .quick-btns {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .quick-btns button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: var(--tg-theme-secondary-bg-color, #0f3460);
+            color: var(--tg-theme-text-color, #fff);
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .quick-btns button.active {
+            background: var(--tg-theme-button-color, #4ade80);
+            color: #000;
+        }
+        .info {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #888);
+            text-align: center;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>⚙️ 設定</h2>
+    </div>
+
+    <div class="current-values" id="currentValues">
+        載入中...
+    </div>
+
+    <div class="section">
+        <div class="section-title">自動開倉比例</div>
+        <div class="auto-open-display"><span id="autoOpenVal">30</span><span>%</span></div>
+        <input type="range" id="autoOpenSlider" min="0" max="4" value="2">
+        <div class="quick-btns">
+            <button data-val="0">0%</button>
+            <button data-val="1">10%</button>
+            <button data-val="2">30%</button>
+            <button data-val="3">50%</button>
+            <button data-val="4">100%</button>
+        </div>
+    </div>
+
+    <div class="info">0% = 關閉自動開倉</div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode') || 'settings';
+
+        // 解析目前設定
+        const currentAutoOpen = parseInt(urlParams.get('auto_open') || '30');
+        const currentExchange = urlParams.get('exchange') || 'bitfinex';
+        const currentSymbol = urlParams.get('symbol') || 'BTC/USDT';
+        const currentStopLoss = urlParams.get('stop_loss') || '2.0';
+        const currentFastMA = urlParams.get('fast_ma') || '10';
+        const currentSlowMA = urlParams.get('slow_ma') || '30';
+        const currentVolumeThreshold = urlParams.get('volume_threshold') || '1.5';
+
+        document.getElementById('currentValues').innerHTML =
+            '<div class="label">交易所</div><div class="value">' + currentExchange + '</div>' +
+            '<div class="label" style="margin-top:8px">交易對</div><div class="value">' + currentSymbol + '</div>' +
+            '<div class="label" style="margin-top:8px">停損</div><div class="value">' + currentStopLoss + '%</div>' +
+            '<div class="label" style="margin-top:8px">MA 參數</div><div class="value">' + currentFastMA + ' / ' + currentSlowMA + '</div>' +
+            '<div class="label" style="margin-top:8px">量能閾值</div><div class="value">' + currentVolumeThreshold + 'x</div>';
+
+        const slider = document.getElementById('autoOpenSlider');
+        const valEl = document.getElementById('autoOpenVal');
+        const quickBtns = document.querySelectorAll('.quick-btns button');
+        const pctMap = ['0', '10', '30', '50', '100'];
+        const sliderToPct = v => parseInt(pctMap[v]);
+
+        function updateAutoOpen(val) {
+            slider.value = val;
+            valEl.textContent = pctMap[val];
+            quickBtns.forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.val) === val);
+            });
+        }
+
+        slider.addEventListener('input', e => updateAutoOpen(e.target.value));
+        quickBtns.forEach(btn => {
+            btn.addEventListener('click', () => updateAutoOpen(parseInt(btn.dataset.val)));
+        });
+
+        // 預設值
+        const defaultPct = pctMap.indexOf(String(currentAutoOpen));
+        updateAutoOpen(defaultPct >= 0 ? defaultPct : 2);
+
+        // MainButton = 儲存
+        tg.MainButton.text = '💾 儲存設定';
+        tg.MainButton.show();
+
+        tg.onEvent('mainButtonClicked', () => {
+            const pct = sliderToPct(parseInt(slider.value));
+            tg.sendData(JSON.stringify({
+                action: 'save_settings',
+                auto_open_percent: pct
+            }));
+            tg.close();
+        });
+
+        tg.ready();
+    </script>
+</body>
+</html>

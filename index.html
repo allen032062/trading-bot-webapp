@@ -122,7 +122,7 @@
 <body>
     <div class="header">
         <h2>📊 開倉位</h2>
-        <div class="balance" id="balance">可用: $0 USDT</div>
+        <div class="balance" id="balance">可用: $0 USD</div>
         <div id="debugUrl" style="color: red; font-size: 12px; word-break: break-all;"></div>
     </div>
 
@@ -136,7 +136,7 @@
             <button data-val="100">100%</button>
         </div>
         <div class="preview">
-            <div class="label">使用金額（USDT）</div>
+            <div class="label">使用金額（USD）</div>
             <div class="amount" id="usdAmount">$0</div>
             <div class="btc" id="btcAmount">≈ 0 BTC</div>
         </div>
@@ -165,7 +165,7 @@
         const priceRaw = urlParams.get('price');
         const price = priceRaw !== null && priceRaw !== '' ? parseFloat(priceRaw) : 81000;
 
-        document.getElementById('balance').textContent = `可用: $${balance.toFixed(2)} USDT`;
+        document.getElementById('balance').textContent = `可用: $${balance.toFixed(2)} USD`;
 
         const slider = document.getElementById('slider');
         const percentEl = document.getElementById('percent');
